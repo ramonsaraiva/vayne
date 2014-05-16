@@ -2,6 +2,7 @@ from connection import Connection
 
 class Bot:
 	END_OF_MOTD = '376'
+	PREFIX = 'v'
 
 	def __init__(self, nick):
 		self.connections = []
@@ -49,6 +50,23 @@ class Bot:
 				self.connections[key].write(('JOIN', channel))
 			return	
 
+		if text:
+			if text[0] == self.PREFIX and len(text.split(' ')) >= 2:
+				print('CMD!')
+				self.parse_cmd(text, key)
+
+	def check_args(self, args, req):
+		if len(args) < req:
+			return False
+		return True
+
+	def parse_cmd(self, cmd, key):
+		cmd, args = cmd[2:].split(' ', 1)
+		args = args.split(' ')
+		if (cmd == 'join'):
+			if not self.check_args(args, 1):
+				return
+			self.connections[key].write(('JOIN', args[0]))
 
 	def work(self):
 		while True:
