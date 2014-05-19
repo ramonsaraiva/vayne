@@ -24,7 +24,6 @@ class Connection:
 		print('init data sent')
 
 	def push(self, data):
-		print('pushed => {0}'.format(data))
 		self.socket.send(data)
 
 	def __write(self, args, text=None):
@@ -50,3 +49,7 @@ class Connection:
 				text = safe(text)
 			self.__write(args, text)
 		except Exception, e: print(e)
+		
+	def msg(self, msg, targets=None):
+		for t in targets:
+			self.write(('PRIVMSG', t), msg)
