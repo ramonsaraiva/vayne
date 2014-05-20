@@ -151,10 +151,12 @@ class Bot:
 	def vnc_global(self, clean):
 		mask_done = []
 		if not clean:
+			print('not clean')
 			vncd_f = open('vnc_done.json', 'r')
 			vncd_j = json.load(vncd_f)
 			vncd_f.close()
 			mask_done = vncd_j['masks']
+			print mask_done
 		r_first, r_second, mask = self.random_mask()
 		while True:
 			#subnetworks in 192.168.x.x or between 172.16 and 172.31 are private so no need for scanning
@@ -187,4 +189,14 @@ if __name__ == '__main__':
 	bot.connect()
 	"""
 	bot = Bot('woodoozera')
-	bot.vnc_global(True)
+	Thread(target=bot.vnc_global, args=(True,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	Thread(target=bot.vnc_global, args=(False,)).start()
+	i = 0
+	while 1:
+		i += 1
