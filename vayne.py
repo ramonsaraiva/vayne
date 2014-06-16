@@ -1,13 +1,25 @@
+# -*- coding: utf-8 -*-
+
 from connection import Connection
 from vnc_expl import newb_expl
 from threading import Thread
 import json
 import random
 
+from leagueoflegends import LeagueOfLegends
+from leagueoflegends import RiotError
+
 class Bot:
-	END_OF_MOTD = '376'
+	END_OF_MOTDS = ['376', '422']
 	PREFIX = 'v'
 	TAG = '(vayne)'
+
+	OWNERS = ['vayne']
+
+	RIOT_API_KEY = '1201f800-aced-4abb-9083-714dcf58a36e'
+	QUEUES = {
+		'RANKED_SOLO_5x5': 'solo',
+	}
 
 	def __init__(self, nick):
 		self.__connections = []
@@ -61,7 +73,7 @@ class Bot:
 			argstr, text = line, ''
 		args = argstr.split(' ')
 
-		if args[0] == self.END_OF_MOTD:
+		if args[0] in self.END_OF_MOTDS:
 			for channel in self.__channels:
 				self.currcon.write(('JOIN', channel))
 			return	
@@ -73,7 +85,7 @@ class Bot:
 
 	def check_args(self, args, req):
 		if len(args) < req:
-			self.printayne('?')
+			self.printayne('?', self.__channels)
 			return False
 		return True
 
@@ -103,6 +115,11 @@ class Bot:
 			args = ''
 		args = args.split(' ')
 
+		if (cmd == 'nick'):
+			if not self.check_args(args, 1):
+				return
+
+			self.currcon.write(('NICK', args[0]))
 		if (cmd == 'join'):
 			if not self.check_args(args, 1):
 				return
@@ -136,6 +153,52 @@ class Bot:
 				return
 			if args[0] in self.__threads:
 				del self.__threads[args[0]][:]
+		if (cmd == 'summoner'):
+			if not self.check_args(args, 2):
+				return
+
+			lol = self.lolit()
+			lol.set_api_region(args[1])
+
+			try:
+				data = lol.get_summoner_by_name(args[0])
+				s_name = data.iterkeys().next()
+				s_data = data[s_name]
+				s_id = s_data['id']
+				s_level = s_data['summonerLevel']
+				self.printayne('{0} => id {1} # level {2}'.format(s_name, s_id, s_level), self.__channels)
+			except RiotError, e:
+				self.printayne('riot error => {0}'.format(e.error_msg), self.__channels)
+
+		if (cmd == 'soloq'):
+			if not self.check_args(args, 2):
+				return
+
+			lol = self.lolit()
+			lol.set_api_region(args[1])
+			try:
+				lol.set_summoner(args[0])
+				data = lol.get_summoner_leagues_entry()
+				print data
+
+				for key, queue in data.items():
+					if key in self.QUEUES:
+						tier = data[key]['tier']
+						name = data[key]['name']
+
+						entry = data[key]['entries'][0]
+						division = entry['division']
+						wins = entry['wins']
+						lp = entry['leaguePoints']
+						ident = entry['playerOrTeamName'].encode('ascii', 'replace')
+
+						self.printayne('{0} => tier {1} # division {2} # {3} wins # {4} league points'.format(ident, tier, division, wins, lp), self.__channels)
+				
+			except RiotError, e:
+				self.printayne('riot error => {0}'.format(e.error_msg), self.__channels)
+
+	def lolit(self):
+		return LeagueOfLegends(self.RIOT_API_KEY)
 
 	def random_mask(self):
 		r_first = random.randint(0, 255)
@@ -190,22 +253,7 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
-	bot = Bot('woodoozera')
-	bot.add_connection('irc.freenode.org', 6667)
-	bot.set_channels(['#woodoo'])
+	bot = Bot('vayneluwl')
+	bot.add_connection('google.root-network.org', 6667)
+	bot.set_channels(['#vayne'])
 	bot.connect()
-	"""
-	TEST
-	bot = Bot('woodoozera')
-	Thread(target=bot.vnc_global, args=(True,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	Thread(target=bot.vnc_global, args=(False,)).start()
-	i = 0
-	while 1:
-		i += 1
-	"""
