@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import socket
+import urllib2
 
 from connection import Connection
 from threading import Thread
@@ -138,6 +140,28 @@ class Bot:
 			if args[0] in self.__threads:
 				del self.__threads[args[0]][:]
 
+		if (cmd == 'py'):
+			if not self.check_owner(source):
+				return
+			if not self.check_args(args, 1):
+				return
+			try:
+				ret = eval(' '.join(args))
+				self.printayne(ret, self.__channels)
+			except Exception as e:
+				self.printayne(e, self.__channels)
+
+		if (cmd == 'proxy'):
+			if not self.check_owner(source):
+				return
+			if not self.check_args(args, 1):
+				return
+
+			t = Thread(target=self.proxy, args=(args[0],))
+			self.add_jobs('proxy', [t])
+			t.start()
+			self.printayne('checking for proxies in {0}'.format(args[0]), self.__channels)
+
 		if (cmd == 'summoner'):
 			if not self.check_args(args, 2):
 				return
@@ -170,6 +194,32 @@ class Bot:
 				return
 			fine, output = self.__lol.last(args[0], args[1])
 			self.printayne(output, self.__channels)
+
+	def is_bad_proxy(self, pip):
+		try:
+			proxy_handler = urllib2.ProxyHandler({'http': pip})
+			opener = urllib2.build_opener(proxy_handler)
+			opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+			urllib2.install_opener(opener)
+			req=urllib2.Request('http://www.google.com')
+			sock=urllib2.urlopen(req)
+		except urllib2.HTTPError, e:
+			return True
+		except Exception, detail:
+			return True
+		return False
+
+	def proxy(self, url):
+		socket.setdefaulttimeout(5)
+		try:
+			web_file = urllib2.urlopen(url)
+			for p in web_file:
+				if not self.is_bad_proxy(p.strip('\n')):
+					self.printayne('proxy {0} ONLINE'.format(p), self.__channels)
+		except Exception, e:
+			self.printayne(e, self.__channels)
+			self.printayne('error downloading your proxy list file', self.__channels)
+			return
 
 	def work(self):
 		while True:
