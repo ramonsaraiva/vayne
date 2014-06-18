@@ -346,9 +346,9 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
-	bot = Bot('PIKACHU')
+	bot = Bot(sys.argv[2])
 	#bot.add_connection('google.root-network.org', 6667)
 	bot.add_connection(sys.argv[1], 6667)
-	channels = ['#{0}'.format(x) for x in sys.argv[2:]]
+	channels = ['#{0}'.format(x) for x in sys.argv[3:]]
 	bot.set_channels(channels)
 	bot.connect()
