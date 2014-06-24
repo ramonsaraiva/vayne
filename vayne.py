@@ -7,7 +7,7 @@ import urllib2
 from connection import Connection
 from threading import Thread
 
-from lolclean.lolclean import LOLClean
+#from lolclean.lolclean import LOLClean
 import paramiko
 
 class Bot:
@@ -16,6 +16,8 @@ class Bot:
 	TAG = '(segfault)'
 
 	OWNERS = ['segfault']
+
+	LOL = False
 
 	CMDS = [
 		'help',
@@ -30,9 +32,9 @@ class Bot:
 		'ssh',
 		'nssh',
 		'bssh',
-		'summoner',
-		'rank',
-		'last',
+		#'summoner',
+		#'rank',
+		#'last',
 	]
 
 	HELP = '{0} [{1}]'.format(PREFIX, ', '.join(sorted(CMDS)))
@@ -49,9 +51,9 @@ class Bot:
 		'ssh': 'ssh [net] # scan for open sshs in net (e.g. 200.100.100).',
 		'nssh': 'nssh # show the number of open sshs currently stored.',
 		'bssh': 'bssh [URL] # brute force stored open sshs with {URL} wordlist.',
-		'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
-		'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
-		'last': 'last [summoner_name] # show {summoner_name} last game data.',
+		#'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
+		#'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
+		#'last': 'last [summoner_name] # show {summoner_name} last game data.',
 	}
 
 	def __init__(self, nick):
@@ -63,7 +65,7 @@ class Bot:
 		self.__key = 0
 		self.__nick = nick
 		self.__silent = True
-		self.__lol = LOLClean('1201f800-aced-4abb-9083-714dcf58a36e')
+		#self.__lol = LOLClean('1201f800-aced-4abb-9083-714dcf58a36e')
 
 	def add_connection(self, sv, port):
 		con = Connection(sv, port)
@@ -276,6 +278,9 @@ class Bot:
 			self.add_jobs('bssh', [t])
 			t.start()
 			self.printayne('bruteforcing ssh {0}'.format(args[0]), [place])
+
+		if not self.LOL:
+			return
 
 		if (cmd == 'summoner'):
 			if not self.check_args(args, 2, place):
