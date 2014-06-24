@@ -17,41 +17,12 @@ class Bot:
 
 	OWNERS = ['segfault']
 
-	CMDS = [
-		'help',
-		'power',
-		'nick',
-		'join',
-		'jobs',
-		'stop',
-		'silent',
-		'py',
-		'proxy',
-		'ssh',
-		'nssh',
-		'bssh',
-		'summoner',
-		'rank',
-		'last',
-	]
+	HELP = '(v or nick) + [help, power, nick, join, jobs, stop, silent, py, proxy, ssh, nssh, bssh] & lol: [summoner, rank, last]'
 
-	HELP = '{0} [{1}]'.format(PREFIX, ', '.join(sorted(CMDS)))
-
-	USAGE = {
-		'power': 'power [nickname] # gives power to {nickname} (admin-only).',
-		'nick': 'nick [nickname] # change nickname (admin-only).',
-		'join': 'join [channel] # join channel (admin-only).',
-		'jobs': 'jobs # show all runnning jobs.',
-		'stop': 'stop [jobname|all] # stop all jobs or jobs with {jobname} (admin-only).',
-		'silent': 'silent [1|0] # silent execution, 1 equals true, 0 equals false (admin-only).',
-		'py': 'py [python_code] # compile a slice of python code and returns it.',
-		'proxy': 'proxy [URL] # check for all proxies in URL (text file with proxies).',
-		'ssh': 'ssh [net] # scan for open sshs in net (e.g. 200.100.100).',
-		'nssh': 'nssh # show the number of open sshs currently stored.',
-		'bssh': 'bssh [URL] # brute force stored open sshs with {URL} wordlist.',
-		'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
-		'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
-		'last': 'last [summoner_name] # show {summoner_name} last game data.',
+	CMDS = {
+		'power': '({0} or nick) + power [nickname]'.format(PREFIX),
+		'nick': '({0} or nick) + nick [nickname]'.format(PREFIX),
+		'join': '({0} or nick) + join [channel]'.format(PREFIX),
 	}
 
 	def __init__(self, nick):
@@ -161,9 +132,7 @@ class Bot:
 
 		if (cmd == 'help'):
 			if args:
-				if args[0] in self.USAGE:
-					self.printayne('{0} {1}'.format(self.PREFIX, self.USAGE[args[0]]), [place])
-					return
+				return
 			self.printayne(self.HELP, [place])
 
 		if (cmd == 'power'):
@@ -174,9 +143,6 @@ class Bot:
 
 			self.OWNERS.append(args[0])
 			self.printayne('now {0} has full power'.format(args[0]), place)
-
-		if (cmd == 'gods'):
-			self.printayne('i serve to => [{0}]'.format(', '.join(self.OWNERS)), [place])
 
 		if (cmd == 'nick'):
 			if not self.check_owner(source, place):
