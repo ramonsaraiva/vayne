@@ -3,6 +3,7 @@
 import sys
 import socket
 import urllib2
+import json
 
 from connection import Connection
 from threading import Thread
@@ -13,33 +14,11 @@ import paramiko
 class Bot:
 	END_OF_MOTDS = ['376', '422']
 	PREFIX = 'v'
-	TAG = '(segfault)'
+	TAG = ''
 
 	OWNERS = ['segfault']
 
 	LOL = False
-
-	CMDS = [
-		'help',
-		'power',
-		'gods',
-		'nick',
-		'join',
-		'jobs',
-		'stop',
-		'silent',
-		'py',
-		'proxy',
-		'ssh',
-		'nssh',
-		'bsshu',
-		'bssh',
-		#'summoner',
-		#'rank',
-		#'last',
-	]
-
-	HELP = '{0} [{1}]'.format(PREFIX, ', '.join(sorted(CMDS)))
 
 	USAGE = {
 		'power': 'power [nickname] # gives power to {nickname} (admin-only).',
@@ -50,6 +29,8 @@ class Bot:
 		'stop': 'stop [jobname|all] # stop all jobs or jobs with {jobname} (admin-only).',
 		'silent': 'silent [1|0] # silent execution, 1 equals true, 0 equals false (admin-only).',
 		'py': 'py [python_code] # compile a slice of python code and returns it.',
+		'dns': 'dns [dns] # show {dns} host.',
+		'ip': 'ip [ip] # show {ip} geolocation.',
 		'proxy': 'proxy [URL] # check for all proxies in URL (text file with proxies).',
 		'ssh': 'ssh [net] # scan for open sshs in net (e.g. 200.100.100).',
 		'nssh': 'nssh # show the number of open sshs currently stored.',
@@ -58,6 +39,29 @@ class Bot:
 		#'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
 		#'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
 		#'last': 'last [summoner_name] # show {summoner_name} last game data.',
+	}
+
+	HELP = '{0} [{1}]'.format(PREFIX, ', '.join(sorted(USAGE.keys())))
+
+	COLOR_CODE = '\x03'
+
+	COLORS = {
+		'white': '0',
+		'black': '1',
+		'blue': '2',
+		'green': '3',
+		'red': '4',
+		'brown': '5',
+		'purple': '6',
+		'orange': '7',
+		'yellow': '8',
+		'lgreen': '9', #light green
+		'teal': '10', #green/blue cyan
+		'lcyan': '11', #light cyan
+		'lblue': '12', #light blue
+		'pink': '13',
+		'grey': '14',
+		'lgrey': '15', #light grey
 	}
 
 	def __init__(self, nick):
@@ -91,7 +95,13 @@ class Bot:
 		return self.__connections[self.__key]
 
 	def printayne(self, msg, targets=None):
-		self.currcon.msg('{0} ~ {1}'.format(self.TAG, msg), targets)
+		self.currcon.msg(msg, targets)
+
+	def printayne_e(self, msg, targets=None):
+		self.currcon.msg('{0}EXCEPTION:{1} {2}'.format(self.color('red', 'black'), self.color('white', 'black'), msg), targets)
+
+	def color(self, fg, bg):
+		return '{0}{1},{2}'.format(self.COLOR_CODE, self.COLORS[fg], self.COLORS[bg])
 
 	def parse(self, data):
 		print(data)
@@ -164,6 +174,11 @@ class Bot:
 
 		cmd = args.pop(0)
 		source = source.split('!')[0]
+
+		color_arg = self.color('lgrey', 'black')
+		color_val = self.color('white', 'black')
+		color_yval = self.color('yellow', 'black')
+		color_error = self.color('red', 'black')
 
 		if (cmd == 'help'):
 			if args:
@@ -241,6 +256,45 @@ class Bot:
 			except Exception as e:
 				self.printayne(e, [place])
 
+		if (cmd == 'dns'):
+			if not self.check_args(args, 1, place):
+				return
+			try:
+				self.printayne('{0}{1} {2}=>{3} {4}'.format(color_yval, args[0], color_arg, color_val, socket.gethostbyname(args[0])), [place])
+			except Exception:
+				self.printayne('could not get host by name {0}'.format(args[0]), [place])
+
+		if (cmd == 'ip'):
+			if not self.check_args(args, 1, place):
+				return
+			try:
+				web_file = urllib2.urlopen('{0}/{1}'.format('http://ip-api.com/json', args[0]))
+				data = json.loads(web_file.read())
+				if data['status'] == 'success':
+					for i,k in data.items():
+						if not k:
+							data[i] = '?'
+					self.printayne(u"{0} {1} {2}=> local: {3}{4} - {5} - {6}/{7} {8}# timezone: {9}{10} {11}# isp: {12}{13} {14}# as:{15} {16}".format(color_yval, data['query'], color_arg, color_val, data['city'], data['regionName'], data['country'], data['countryCode'], color_arg, color_val, data['timezone'], color_arg, color_val, data['isp'], color_arg, color_val, data['as']), [place])
+				else:
+					self.printayne('{0} FAILED => {1}'.format(data['query'], data['message']), [place])
+			except Exception, e:
+				self.printayne(str(e), [place])
+				self.printayne('could not open ip api url', [place])
+
+		if (cmd == 'port'):
+			if not self.check_args(args, 2, place):
+				return
+			try:
+				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				sock.settimeout(3)
+				result = sock.connect_ex((args[0], int(args[1])))
+				if result == 0:
+					self.printayne('{0} {1} {2}port{3} {4} {5}OPEN'.format(color_yval, args[0], color_val, color_yval, args[1], self.color('lgreen', 'black')), [place])
+				else:
+					self.printayne('{0} {1} {2}port{3} {4} {5}CLOSED'.format(color_yval, args[0], color_val, color_yval, args[1], self.color('red', 'black')), [place])
+			except:
+				self.printayne('{0}EXCEPTION: {1}invalid arguments'.format(color_error, color_val), [place])
+
 		if (cmd == 'proxy'):
 			if not self.check_owner(source, place):
 				return
@@ -295,6 +349,19 @@ class Bot:
 			self.add_jobs('bssh', [t])
 			t.start()
 			self.printayne('bruteforcing ssh {0}.. {1} keys per thread (5 threads)'.format(args[0], args[1]), [place])
+
+		if (cmd == 'goo'):
+			if not self.check_args(args, 2, place):
+				return
+
+			url = 'https://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=inurl:product.php?id=&start={0}'.format(5 * (int(args[1])-1))
+			data = urllib2.urlopen(url)
+			jdata = json.loads(data.read())
+			try:
+				for i,v in enumerate(jdata['responseData']['results'][:5]):
+					self.printayne('{0}[{1}]{2} {3}'.format(color_yval, i, color_val, urllib2.unquote(v['url'])), [place])
+			except Exception, e:
+				self.printayne_e('could not get any results', [place]) 
 
 		if not self.LOL:
 			return
