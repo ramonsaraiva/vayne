@@ -351,10 +351,10 @@ class Bot:
 			self.printayne('bruteforcing ssh {0}.. {1} keys per thread (5 threads)'.format(args[0], args[1]), [place])
 
 		if (cmd == 'goo'):
-			if not self.check_args(args, 2, place):
+			if not self.check_args(args, 3, place):
 				return
 
-			url = 'https://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=inurl:product.php?id=&start={0}'.format(5 * (int(args[1])-1))
+			url = 'https://ajax.googleapis.com/ajax/services/search/web?v=1.0&q={0}?id=&rsz={1}&start={2}'.format(args[0], int(args[1]), int(args[1]) * (int(args[2])-1))
 			data = urllib2.urlopen(url)
 			jdata = json.loads(data.read())
 			try:
